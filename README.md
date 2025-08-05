@@ -52,7 +52,10 @@ An interactive Streamlit web application for stock data analysis using the Alpha
 
 - **API Limit:** The free Alpha Vantage tier allows up to 25 requests per day per key.
 - If you exceed the limit, you will see an error message. Try again later or use a different API key.
-- Do **not** upload your real `.env` file to GitHub. Only `.env.example` should be included.
+- Before running the application, copy .env_example to .env and replace your_api_key_here with your personal Alpha Vantage API key.
+  Never upload your actual .env file to the repository!
+
+
 
 ## Troubleshooting
 

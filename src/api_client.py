@@ -41,7 +41,7 @@ def fetch_stock_data(func, comp, api_key):
 
         raw_data = data_j[mapped_key]
         data_df = pd.DataFrame.from_dict(raw_data, orient="index")
-
+    
         # Normalize and clean column names first
         data_df.columns = data_df.columns.str.strip().str.lower()
 

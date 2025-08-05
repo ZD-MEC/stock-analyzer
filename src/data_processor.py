@@ -14,44 +14,36 @@ from streamlit import columns, checkbox
 
 def analyze_intraday (data_j, data_df):
     st.text("Analyzing Intraday")
-    analyze_timeseries(data_df, mode='intraday')
-
-
+    analyze_general(data_df, mode='intraday')
 
 def analyze_daily (data_j, data_df):
     st.text("Analyzing daily")
-    analyze_timeseries(data_df, mode='daily')
-
-
+    analyze_general(data_df, mode='daily')
 
 def analyze_weekly_adjusted (data_j, data_df):
     st.text("Analyzing weekly")
-    analyze_timeseries(data_df, mode='weekly')
-
-
+    analyze_general(data_df, mode='weekly')
 
 def analyze_monthly_adjusted (data_j, data_df):
     st.text("Analyzing monthly")
-    analyze_timeseries(data_df, mode='monthly')
-
+    analyze_general(data_df, mode='monthly')
 
 def analyze_quote (data_j, data_df):
     st.text("Analyzing quote")
-    analyze_timeseries(data_df, mode='quote')
-
+    analyze_general(data_df, mode='quote')
 
 #need to make sure I add the mode to the function
-def analyze_timeseries(data_df, mode):
-    st.write(data_df.head())
-    st.write(data_df.dtypes)
-    #building the data table in a such a way that it would fit the desired structure for seaburn methods.
+def analyze_general(data_df, mode):
+    #st.write(data_df.head())
+    #st.write(data_df.dtypes)
+    #building the data table in such a way that it would fit the desired structure for seaburn methods.
     # also checking errors in columns names
     expected_columns = ['open', 'high', 'low', 'close', 'volume']
     error_flag = False
     if not all(column in data_df.columns for column in expected_columns):
         st.text("issue with expected data, try different data type")
         logging.error("Data columns is not in dataframe")
-        error_flag = True
+        return
 
     st.title(f"Compare {mode} differences and changes across time" )
     fig_1_check = st.checkbox(f"show graph of {mode} difference between prices and parameters")
@@ -63,37 +55,50 @@ def analyze_timeseries(data_df, mode):
 
     # user will receive a checkbox for graph view with insights
     #if other graph will be added in the future - need to write a if loop for that
-    if not error_flag:
-        col_mid = st.columns([1, 2, 1])[1]
-        fig_1 = plot_prices_vs_time(data_df, mode)
-        fig_2 = plot_pct_vs_volume(data_df, mode)
+    col_mid = st.columns([1, 2, 1])[1]
+    fig_1 = plot_prices_vs_time(data_df, mode)
+    fig_2 = plot_pct_vs_volume(data_df, mode)
 
-        if fig_1_check and fig_2_check:
-            with col1:
-                if fig_1 is not None:
-                    st.pyplot(fig_1)
-                    st.text(text_fig_1)
+    if fig_1_check and fig_2_check:
+        with col1:
+            if fig_1 is not None:
+                st.pyplot(fig_1)
+                st.text(text_fig_1)
 
-            with col2:
-                if fig_2 is not None:
-                    st.pyplot(fig_2)
-                    st.text(text_fig_2)
+        with col2:
+            if fig_2 is not None:
+                st.pyplot(fig_2)
+                st.text(text_fig_2)
 
-        elif fig_1_check and not fig_2_check:
-            with col_mid:
-                if fig_1 is not None:
-                    st.pyplot(fig_1)
-                    st.text(text_fig_1)
+    elif fig_1_check and not fig_2_check:
+        with col_mid:
+            if fig_1 is not None:
+                st.pyplot(fig_1)
+                st.text(text_fig_1)
 
+    elif fig_2_check and not fig_1_check:
+        with col_mid:
+            if fig_2 is not None:
+                st.pyplot(fig_2)
+                st.text(text_fig_2)
 
-        elif fig_2_check and not fig_1_check:
-            with col_mid:
-                if fig_2 is not None:
-                    st.pyplot(fig_2)
-                    st.text(text_fig_2)
+    # --- Insights below the graphs ---
+    # Combine explanations depending on which graphs are shown (no duplicates)
+    main_insights = []
+    if fig_1_check:
+        main_insights.append(text_fig_1)
+    if fig_2_check:
+        if text_fig_2 not in main_insights:
+            main_insights.append(text_fig_2)
+    if main_insights:
+        st.markdown("**Key takeaways from the selected graph(s):**")
+        for text in main_insights:
+            st.markdown(f"- {text}")
 
-
-    # writing insights for user on the data showed in graph
+    # Separate insights section (only when the user clicks the button)
+    show_insights_button = st.button("Show insights for this data")
+    if show_insights_button:
+        insights(data_df, mode)
 
 
 def plot_prices_vs_time (data_df,mode):
@@ -157,8 +162,97 @@ def plot_pct_vs_volume(data_df, mode):
     ax_2_1.legend(plots, labels, loc='upper left')
 
     fig_2.tight_layout()
-    ax_2_1.set_title(f'{mode} Percent Change vs Volume')
+    ax_2_1.set_title(f'{mode.capitalize()} Percent Change vs Volume')
     return fig_2
+
+
+def insights(data_df, mode):
+    """
+    Show period-based statistics: max/min close, average volume,
+    and 7-day rolling average (if daily), grouped by period (month/week/year)
+    :param data_df: Clean dataframe with 'Date', 'close', 'volume'
+    :param mode: one of 'daily', 'weekly', 'monthly'
+    """
+    df = data_df.copy()
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date'])
+
+    # Set period column and aggregation rules by mode
+    if mode == 'daily':
+        period_col = 'YearMonth'
+        df[period_col] = df['Date'].dt.to_period('M')
+        group_desc = "month"
+    elif mode == 'weekly':
+        period_col = 'YearWeek'
+        df[period_col] = df['Date'].dt.strftime('%Y-%U')
+        group_desc = "week"
+    elif mode == 'monthly':
+        period_col = 'Year'
+        df[period_col] = df['Date'].dt.year
+        group_desc = "year"
+    else:
+        st.write("Unsupported mode for insights.")
+        return
+
+    # Aggregation per period
+    agg = df.groupby(period_col).agg({
+        'close': ['max', 'min'],
+        'volume': 'mean'
+    }).reset_index()
+    agg.columns = [period_col, 'Max Close', 'Min Close', f'Average {group_desc.capitalize()} Volume']
+
+    # 7-day rolling average only if daily
+    if mode == 'daily':
+        df['7d Rolling Avg Close'] = df['close'].rolling(window=7).mean()
+        rolling = df.groupby(period_col)['7d Rolling Avg Close'].mean().reset_index()
+        agg = pd.merge(agg, rolling, on=period_col, how='left')
+
+    # Explanation text
+    st.markdown(f"#### {group_desc.capitalize()}ly Volume & Close Price Stats ({mode.capitalize()} Data)")
+    st.write(f"""
+    - **Max Close:** Highest closing price for the {group_desc}
+    - **Min Close:** Lowest closing price for the {group_desc}
+    - **Average {group_desc.capitalize()} Volume:** Mean trading volume per {group_desc}
+    """)
+    if mode == 'daily':
+        st.write("- **7d Rolling Avg Close:** Mean of the 7-day moving average closing price in the month")
+    st.dataframe(agg.style.format({
+        'Max Close': '{:.2f}',
+        'Min Close': '{:.2f}',
+        f'Average {group_desc.capitalize()} Volume': '{:,.0f}',
+        **({'7d Rolling Avg Close': '{:.2f}'} if mode == 'daily' else {})
+    }))
+
+
+    #need to check logic
+    st.markdown("#### Automated Analyst Commentary per Period")
+    volatility_threshold = 0.08  # 8% תנודתיות = חודש תנודתי
+    avg_volume_all = agg[f'Average {group_desc.capitalize()} Volume'].mean()
+
+    for idx, row in agg.iterrows():
+        max_close, min_close = row['Max Close'], row['Min Close']
+        avg_volume = row[f'Average {group_desc.capitalize()} Volume']
+        volatility = (max_close - min_close) / max_close if max_close else 0
+        period_str = str(row[period_col])
+
+        # pickness
+        if volatility > volatility_threshold:
+            msg = f"**{period_str}**: The stock was highly volatile ({volatility:.1%} price range). "
+        elif volatility < 0.03:
+            msg = f"**{period_str}**: The stock was particularly stable. "
+        else:
+            msg = f"**{period_str}**: Moderate price changes observed. "
+
+        #volume size
+        if avg_volume > avg_volume_all * 1.2:
+            msg += "Trading volume was significantly above average."
+        elif avg_volume < avg_volume_all * 0.8:
+            msg += "Trading volume was unusually low."
+        else:
+            msg += "Trading volume was typical."
+
+        st.info(msg)
+
 
 
 
