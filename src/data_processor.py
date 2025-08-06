@@ -5,10 +5,6 @@ import seaborn as sns
 import logging
 
 # ================== MAIN ROUTE FUNCTIONS ================== #
-"""
-   Entrypoint for daily/weekly/monthly analysis.
-   Calls the general analyzer with 'relevant' mode.
-"""
 def analyze_daily(data_j, data_df):
     st.text("Analyzing daily")
     analyze_general(data_df, mode='daily')
@@ -38,9 +34,9 @@ def analyze_general(data_df, mode):
 
     st.title(f"Compare {mode} differences and changes across time")
 
-    # --- Checkbox UI for user selection of graphs ---
-    fig_1_check = st.checkbox(f"Show graph of {mode} difference between prices and parameters", value=True)
-    fig_2_check = st.checkbox(f"Show graph: Compare {mode} change in % vs volume across time", value=True)
+    # --- Checkbox UI for user selection of graphs (default: not shown) ---
+    fig_1_check = st.checkbox(f"Show graph of {mode} difference between prices and parameters", value=False)
+    fig_2_check = st.checkbox(f"Show graph: Compare {mode} change in % vs volume across time", value=False)
     text_fig_1 = f"This graph shows the {mode} change in open, close, max and min price through time"
     text_fig_2 = f"This graph shows the {mode} change in % of stock closing price along volume through time"
 
@@ -53,41 +49,27 @@ def analyze_general(data_df, mode):
         col1, col2 = st.columns(2)
         with col1:
             if fig_1 is not None:
-                st.pyplot(fig_1)
+                st.pyplot(fig_1, use_container_width=True)
                 st.caption(text_fig_1)
         with col2:
             if fig_2 is not None:
-                st.pyplot(fig_2)
+                st.pyplot(fig_2, use_container_width=True)
                 st.caption(text_fig_2)
     elif fig_1_check and not fig_2_check:
         col_mid = st.columns([1, 2, 1])[1]
         with col_mid:
             if fig_1 is not None:
-                st.pyplot(fig_1)
+                st.pyplot(fig_1, use_container_width=True)
                 st.caption(text_fig_1)
     elif fig_2_check and not fig_1_check:
         col_mid = st.columns([1, 2, 1])[1]
         with col_mid:
             if fig_2 is not None:
-                st.pyplot(fig_2)
+                st.pyplot(fig_2, use_container_width=True)
                 st.caption(text_fig_2)
 
-    # --- Key takeaways (below the graphs) ---
-    main_insights = []
-    if fig_1_check:
-        main_insights.append(text_fig_1)
-    if fig_2_check:
-        if text_fig_2 not in main_insights:
-            main_insights.append(text_fig_2)
-    if main_insights:
-        st.markdown("**Key takeaways from the selected graph(s):**")
-        for text in main_insights:
-            st.markdown(f"- {text}")
-
-    # --- Insights (appears only when user clicks the button) ---
-    show_insights_button = st.button("Show insights for this data")
-    if show_insights_button:
-        insights(data_df, mode)
+    # --- Insights: always shown automatically ---
+    insights(data_df, mode)
 
 # ================== PLOT FUNCTIONS ================== #
 
@@ -150,7 +132,7 @@ def plot_pct_vs_volume(data_df, mode):
     ax_2_1.tick_params(axis='y', labelcolor=color_2_1)
 
     ax_2_2 = ax_2_1.twinx()
-    color_2_2 = 'tab:red'
+    color_2_2 = '#000000'
     ax_2_2.set_ylabel('Volume', color=color_2_2)
     plot_2, = ax_2_2.plot(plot_df['Date'], plot_df['volume'], color=color_2_2, alpha=0.2, label='Volume')
     ax_2_2.tick_params(axis='y', labelcolor=color_2_2)
@@ -167,70 +149,85 @@ def plot_pct_vs_volume(data_df, mode):
 
 def insights(data_df, mode):
     """
-    Shows period-based statistics: max/min close, average volume,
-    and 7-day rolling average (if daily), grouped by period (month/week/year)
-    Also prints automated commentary per period (volatility, volume size).
+    Shows period-based statistics with filter options:
+    - Maximum/Minimum close, average volume, 7-day rolling average (if daily)
+    - Volatility per period
+    - Ability to filter by period or show only extreme outliers
+    - Analyst commentary shown only for filtered periods
     """
-    df_new = data_df.copy()
-    df_new['Date'] = pd.to_datetime(df_new['Date'], errors='coerce')
-    df_new = df_new.dropna(subset=['Date'])
+    df = data_df.copy()
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date'])
 
-    # Set period column and aggregation rules by mode
     if mode == 'daily':
         period_col = 'YearMonth'
-        df_new[period_col] = df_new['Date'].dt.to_period('M')
+        df[period_col] = df['Date'].dt.to_period('M')
         group_desc = "month"
     elif mode == 'weekly':
-        period_col = 'YearWeek'
-        df_new[period_col] = df_new['Date'].dt.strftime('%Y-%U')
-        group_desc = "week"
+        period_col = 'YearMonth'
+        df[period_col] = df['Date'].dt.to_period('M')
+        group_desc = "month"
     elif mode == 'monthly':
         period_col = 'Year'
-        df_new[period_col] = df_new['Date'].dt.year
+        df[period_col] = df['Date'].dt.year
         group_desc = "year"
     else:
         st.write("Unsupported mode for insights.")
         return
 
-    # Aggregation per period
-    summary_df = df_new.groupby(period_col).agg({
+        # Aggregation per period
+    agg = df.groupby(period_col).agg({
         'close': ['max', 'min'],
         'volume': 'mean'
     }).reset_index()
-    summary_df.columns = [period_col, 'Max Close', 'Min Close', f'Average {group_desc.capitalize()} Volume']
+    agg.columns = [period_col, 'Max Close', 'Min Close', f'Average {group_desc.capitalize()} Volume']
 
     # 7-day rolling average only if daily
     if mode == 'daily':
-        df_new['7d Rolling Avg Close'] = df_new['close'].rolling(window=7).mean()
-        rolling = df_new.groupby(period_col)['7d Rolling Avg Close'].mean().reset_index()
-        summary_df = pd.merge(summary_df, rolling, on=period_col, how='left')
+        df['7d Rolling Avg Close'] = df['close'].rolling(window=7).mean()
+        rolling = df.groupby(period_col)['7d Rolling Avg Close'].mean().reset_index()
+        agg = pd.merge(agg, rolling, on=period_col, how='left')
 
-    # Explanation text
+    # Calculate volatility per period
+    agg['Volatility'] = (agg['Max Close'] - agg['Min Close']) / agg['Max Close']
+
+    # --------- Interactive Filter Controls ---------
     st.markdown(f"#### {group_desc.capitalize()}ly Volume & Close Price Stats ({mode.capitalize()} Data)")
-    st.write(f"""
-    - **Max Close:** Highest closing price for the {group_desc}
-    - **Min Close:** Lowest closing price for the {group_desc}
-    - **Average {group_desc.capitalize()} Volume:** Mean trading volume per {group_desc}
-    """)
-    if mode == 'daily':
-        st.write("- **7d Rolling Avg Close:** Mean of the 7-day moving average closing price in the month")
-    st.dataframe(summary_df.style.format({
-        'Max Close': '{:.2f}',
-        'Min Close': '{:.2f}',
-        f'Average {group_desc.capitalize()} Volume': '{:,.0f}',
-        **({'7d Rolling Avg Close': '{:.2f}'} if mode == 'daily' else {})
-    }))
 
-    # --- Automated commentary per period ---
-    st.markdown("#### Automated Analyst Commentary per Period")
+    # Filter by period (select specific period or show all)
+    period_options = agg[period_col].astype(str).tolist()
+    period_selected = st.selectbox(f"Select {group_desc} to show", ["Show all"] + period_options)
+
+    # Filter: Only outliers (high volatility)
+    show_outliers = st.checkbox("Show only high volatility periods (Volatility > 15%)", value=False)
+
+    filtered = agg.copy()
+    if period_selected != "Show all":
+        filtered = filtered[filtered[period_col].astype(str) == period_selected]
+    if show_outliers:
+        filtered = filtered[filtered['Volatility'] > 0.15]
+
+    # Show the filtered DataFrame
+    st.dataframe(
+        filtered.style.format({
+            'Max Close': '{:.2f}',
+            'Min Close': '{:.2f}',
+            f'Average {group_desc.capitalize()} Volume': '{:,.0f}',
+            **({'7d Rolling Avg Close': '{:.2f}'} if mode == 'daily' else {}),
+            'Volatility': '{:.2%}'
+        })
+    )
+
+    # --------- Analyst Commentary for Filtered Periods Only ---------
+    st.markdown(f"#### Automated Analyst Commentary for Selected Period(s)")
     volatility_threshold = 0.08
-    avg_volume_all = summary_df[f'Average {group_desc.capitalize()} Volume'].mean()
+    avg_volume_all = agg[f'Average {group_desc.capitalize()} Volume'].mean()
 
-    for idx, row in summary_df.iterrows():
+    for idx, row in filtered.iterrows():
         max_close = row['Max Close']
         min_close = row['Min Close']
         avg_volume = row[f'Average {group_desc.capitalize()} Volume']
-        volatility = (max_close - min_close) / max_close if max_close else 0
+        volatility = row['Volatility']
         period_str = str(row[period_col])
 
         if volatility > volatility_threshold:
@@ -248,4 +245,3 @@ def insights(data_df, mode):
             msg += "Trading volume was typical."
 
         st.info(msg)
-

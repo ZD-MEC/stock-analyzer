@@ -16,7 +16,7 @@ def fetch_stock_data(func, comp, api_key):
         response = requests.get(url, params=parameters)
         response.raise_for_status()
         data_j = response.json()
-        st.text(data_j)
+    #   st.text(data_j)
 
     except requests.exceptions.RequestException:
         msg = "Unexpected error occurred while fetching data."
