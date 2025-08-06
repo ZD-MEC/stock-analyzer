@@ -30,7 +30,7 @@ def fetch_stock_data(func, comp, api_key):
             "TIME_SERIES_WEEKLY_ADJUSTED": "Weekly Adjusted Time Series",
             "TIME_SERIES_MONTHLY_ADJUSTED": "Monthly Adjusted Time Series"
         }
-
+        # Use.get() to safely retrieve the value for 'func' without raising a KeyError if the key is missing
         mapped_key = map_keys.get(func)
         if mapped_key not in data_j:
             msg_key = f"Expected key '{mapped_key}' not found in API response."
@@ -61,7 +61,7 @@ def fetch_stock_data(func, comp, api_key):
         # Keep only relevant columns (this also ensures any 'adjusted' column is kept if exists)
         keep_cols = [c for c in ['open', 'high', 'low', 'close', 'volume',
                                  'dividend_amount', 'split_coefficient'] if c in data_df.columns]
-        # Check if all expected columns exist
+        # Check if all expected columns exist for future analysis
         if not all(col in data_df.columns for col in keep_cols):
             msg = f"Missing columns after rename: {data_df.columns.tolist()}"
             st.error("Missing one or more expected columns in data.")

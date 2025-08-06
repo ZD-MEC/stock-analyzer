@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
 
-# ================== MAIN ROUTE FUNCTIONS ================== #
+# MAIN ROUTE FUNCTIONS
 def analyze_daily(data_j, data_df):
     st.text("Analyzing daily")
     analyze_general(data_df, mode='daily')
@@ -17,15 +17,15 @@ def analyze_monthly_adjusted(data_j, data_df):
     st.text("Analyzing monthly")
     analyze_general(data_df, mode='monthly')
 
-# ================== GENERAL ANALYSIS ================== #
+# GENERAL ANALYSIS
 
 def analyze_general(data_df, mode):
-    """
-    Receives the DataFrame and selected mode.
-    Presents checkboxes for which graphs to show,
-    handles the graphs' layout and insights button.
-    """
-    # --- Data validity checks ---
+
+    #Receives the DataFrame and selected mode.
+    #Presents checkboxes for which graphs to show,
+    #handles the graphs' layout and insights button.
+
+    # Data validity checks
     expected_columns = ['open', 'high', 'low', 'close', 'volume']
     if not all(column in data_df.columns for column in expected_columns):
         st.text("issue with expected data, try different data type")
@@ -34,17 +34,17 @@ def analyze_general(data_df, mode):
 
     st.title(f"Compare {mode} differences and changes across time")
 
-    # --- Checkbox UI for user selection of graphs (default: not shown) ---
+    # Checkbox UI for user selection of graphs (default: not shown)
     fig_1_check = st.checkbox(f"Show graph of {mode} difference between prices and parameters", value=False)
     fig_2_check = st.checkbox(f"Show graph: Compare {mode} change in % vs volume across time", value=False)
     text_fig_1 = f"This graph shows the {mode} change in open, close, max and min price through time"
     text_fig_2 = f"This graph shows the {mode} change in % of stock closing price along volume through time"
 
-    # --- Prepare figures if needed ---
+    # Prepare figures if needed
     fig_1 = plot_prices_vs_time(data_df, mode) if fig_1_check else None
     fig_2 = plot_pct_vs_volume(data_df, mode) if fig_2_check else None
 
-    # --- Dynamic layout for single/double graph ---
+    # Dynamic layout for single/double graph
     if fig_1_check and fig_2_check:
         col1, col2 = st.columns(2)
         with col1:
@@ -68,16 +68,16 @@ def analyze_general(data_df, mode):
                 st.pyplot(fig_2, use_container_width=True)
                 st.caption(text_fig_2)
 
-    # --- Insights: always shown automatically ---
+    #Insights: always shown automatically
     insights(data_df, mode)
 
-# ================== PLOT FUNCTIONS ================== #
+# PLOT FUNCTIONS
 
 def plot_prices_vs_time(data_df, mode):
-    """
-    Plots lines for open, high, low, close prices across time.
-    Returns a Matplotlib Figure.
-    """
+
+    # Plots lines for open, high, low, close prices across time.
+    # Returns a Matplotlib Figure.
+
     required_cols = ['Date', 'open', 'high', 'low', 'close']
     missing = [col for col in required_cols if col not in data_df.columns]
     if missing:
@@ -103,10 +103,10 @@ def plot_prices_vs_time(data_df, mode):
     return fig_1
 
 def plot_pct_vs_volume(data_df, mode):
-    """
-    Plots % change in closing price (line) vs volume (line, secondary y-axis).
-    Returns a Matplotlib Figure.
-    """
+
+    # Plots % change in closing price (line) vs volume (line, secondary y-axis).
+    # Returns a Matplotlib Figure.
+
     required_columns = ['close', 'volume', 'Date']
     missing = [col for col in required_columns if col not in data_df.columns]
     if missing:
@@ -145,16 +145,16 @@ def plot_pct_vs_volume(data_df, mode):
     ax_2_1.set_title(f'{mode.capitalize()} Percent Change vs Volume')
     return fig_2
 
-# ================== INSIGHTS FUNCTION ================== #
+#INSIGHTS FUNCTION
 
 def insights(data_df, mode):
-    """
-    Shows period-based statistics with filter options:
-    - Maximum/Minimum close, average volume, 7-day rolling average (if daily)
-    - Volatility per period
-    - Ability to filter by period or show only extreme outliers
-    - Analyst commentary shown only for filtered periods
-    """
+
+    # Shows period-based statistics with filter options:
+    # Maximum/Minimum close, average volume, 7-day rolling average (if daily)
+    # Volatility per period
+    # Ability to filter by period or show only extreme outliers
+    # Analyst commentary shown only for filtered periods
+
     df = data_df.copy()
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     df = df.dropna(subset=['Date'])
@@ -191,7 +191,7 @@ def insights(data_df, mode):
     # Calculate volatility per period
     agg['Volatility'] = (agg['Max Close'] - agg['Min Close']) / agg['Max Close']
 
-    # --------- Interactive Filter Controls ---------
+    # Interactive Filter Controls
     st.markdown(f"#### {group_desc.capitalize()}ly Volume & Close Price Stats ({mode.capitalize()} Data)")
 
     # Filter by period (select specific period or show all)
@@ -218,7 +218,7 @@ def insights(data_df, mode):
         })
     )
 
-    # --------- Analyst Commentary for Filtered Periods Only ---------
+    # Analyst Commentary for Filtered Periods Only
     st.markdown(f"#### Automated Analyst Commentary for Selected Period(s)")
     volatility_threshold = 0.08
     avg_volume_all = agg[f'Average {group_desc.capitalize()} Volume'].mean()
