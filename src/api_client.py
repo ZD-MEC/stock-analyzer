@@ -26,7 +26,6 @@ def fetch_stock_data(func, comp, api_key):
 
     try:
         map_keys = {
-            "TIME_SERIES_INTRADAY": "Time Series (5min)",
             "TIME_SERIES_DAILY": "Time Series (Daily)",
             "TIME_SERIES_WEEKLY_ADJUSTED": "Weekly Adjusted Time Series",
             "TIME_SERIES_MONTHLY_ADJUSTED": "Monthly Adjusted Time Series"
