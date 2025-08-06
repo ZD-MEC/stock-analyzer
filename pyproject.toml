@@ -1,5 +1,4 @@
 [tool.poetry]
-package-mode = false
 name = "stock-analyzer"
 version = "0.1.0"
 description = ""
@@ -7,7 +6,7 @@ authors = ["ZD-MEC <zivdi2273@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.13"
 streamlit = "^1.47.1"
 requests = "^2.32.4"
 pandas = "^2.3.1"
