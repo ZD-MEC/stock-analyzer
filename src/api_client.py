@@ -16,9 +16,9 @@ def fetch_stock_data(func, comp, api_key):
         response = requests.get(url, params=parameters)
         response.raise_for_status()
         data_j = response.json()
-        st.write(data_j)
+        st.text(data_j)
 
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         msg = "Unexpected error occurred while fetching data."
         st.error(msg)
         logging.error(msg, exc_info=True)
@@ -41,7 +41,7 @@ def fetch_stock_data(func, comp, api_key):
 
         raw_data = data_j[mapped_key]
         data_df = pd.DataFrame.from_dict(raw_data, orient="index")
-    
+
         # Normalize and clean column names first
         data_df.columns = data_df.columns.str.strip().str.lower()
 
@@ -83,7 +83,7 @@ def fetch_stock_data(func, comp, api_key):
         data_df['symbol'] = comp.upper()
         return data_j, data_df
 
-    except Exception as e:
+    except Exception:
         msg = "Failed to process data structure from API response."
         st.error(msg)
         logging.error(msg, exc_info=True)

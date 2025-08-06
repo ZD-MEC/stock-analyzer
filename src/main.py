@@ -1,21 +1,17 @@
 import logging
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import requests
 import data_processor
 from api_client import fetch_stock_data
 from dotenv import load_dotenv
 import os
-
+#only for times when the API_key had crossed the daily limits
+from local_data_loader import load_local_json
 
 
 # this is the main code that is calling for function that will retreive the disired data.
 # this code is the UI for the user.
 # In case the user has entered wrong values or the server has issues related to connectivity or any other type of issue,
-# the system will send a clear message of what went wrong
+# the system will send a clear message of what went wrong both to user and to log file
 
 # defualt API key
 load_dotenv()
@@ -36,14 +32,13 @@ st.set_page_config(
 st.title("Stock Analyzer")
 comp_symbol = st.text_input("Please enter the stock symbol you wish to analyze: ").upper()
 user_api_key = st.text_input("Enter API key or leave empty to use default")
-
+use_local_json = st.checkbox("Use local JSON instead of live API", value=False)
 
 func = st.selectbox("Please enter the function you wish to analyze.\n the choices for the analysis are:\n",
-    ["TIME_SERIES_INTRADAY",
+    [
     "TIME_SERIES_DAILY",
     "TIME_SERIES_WEEKLY_ADJUSTED",
-    "TIME_SERIES_MONTHLY_ADJUSTED",
-    "GLOBAL_QUOTE"])
+    "TIME_SERIES_MONTHLY_ADJUSTED"])
 
 
 
@@ -54,7 +49,7 @@ if st.button("Analyze"):
         st.error("Please enter a valid stock symbol")
         st.session_state["analyze_clicked"] = False
         st.stop()
-    # שמור קלטים ב-session_state
+    #  inputs are saved in session_state in order to avoid app colapse
     st.session_state["comp_symbol"] = comp_symbol
     st.session_state["user_api_key"] = user_api_key
     st.session_state["func"] = func
@@ -79,11 +74,9 @@ if st.session_state.get("analyze_clicked", False):
 
 
     func_map = {
-        "TIME_SERIES_INTRADAY": data_processor.analyze_intraday,
         "TIME_SERIES_DAILY": data_processor.analyze_daily,
         "TIME_SERIES_WEEKLY_ADJUSTED": data_processor.analyze_weekly_adjusted,
         "TIME_SERIES_MONTHLY_ADJUSTED": data_processor.analyze_monthly_adjusted,
-        "GLOBAL_QUOTE": data_processor.analyze_quote
     }
 
 
